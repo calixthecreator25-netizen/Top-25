@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ranking History | College Football Merit Poll</title>
+<style>
+:root{color-scheme:dark}body{background:#101923;color:#f2f6fc;font:16px system-ui,sans-serif;max-width:1150px;margin:30px auto;padding:0 18px;line-height:1.5}
+a{color:#9bd0ff}h1,h2{line-height:1.2}h2{margin-top:28px}select,input,button{padding:10px;background:#23364b;color:white;border:1px solid #61758c;border-radius:8px;font:inherit}
+.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:end}.controls label{display:grid;gap:5px}
+.notice,.panel{border:1px solid #455a71;border-radius:12px;padding:16px;margin:16px 0}.notice{border-color:#ad8a3b}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:9px;border-bottom:1px solid #394b60}th{font-size:.88rem;color:#c7d8e8}
+tbody tr{cursor:pointer}tbody tr:hover{background:#23364b}.scroll{overflow-x:auto}.muted{color:#b8c8d8}.up{color:#80e6b3}.down{color:#ffb5ae}
+#detail{white-space:pre-wrap;overflow-wrap:anywhere}.hidden{display:none}
+</style></head><body>
+<p><a href="index.html">← Home</a> · <a href="experimental.html">Current rankings</a></p>
+<h1>Ranking History</h1>
+<p class="notice"><strong>EXPERIMENTAL — NOT AN OFFICIAL POLL.</strong> These archives show how the results-only model ranked teams on each recorded date. No committee overrides.</p>
+<div class="controls">
+<label>Division <select id="division"><option value="fbs">FBS</option><option value="fcs">FCS</option></select></label>
+<label>Current snapshot <select id="current"></select></label>
+<label>Compare against <select id="previous"></select></label>
+<label>Search team or conference <input id="search" placeholder="Search rankings"></label>
+</div>
+<p id="status" role="status">Loading ranking archives…</p>
+<div id="overview" class="grid hidden">
+<section class="panel"><h2>Biggest risers</h2><div id="risers"></div></section>
+<section class="panel"><h2>Biggest fallers</h2><div id="fallers"></div></section>
+</div>
+<h2>Full ranking comparison</h2>
+<div class="scroll"><table><thead><tr><th>Rank</th><th>School</th><th>Record</th><th>Merit</th><th>Previous</th><th>Movement</th><th>Score change</th></tr></thead><tbody id="rows"></tbody></table></div>
+<section class="panel" id="detail" aria-live="polite">Select a team to review its ranking changes and completed games since the comparison snapshot.</section>
+<p class="muted">Movement compares the selected dates, not necessarily consecutive calendar weeks. Rankings reflect the experimental formula used when each snapshot was created. If the formula changes, comparisons may not be directly comparable.</p>
+<script>
+const $=id=>document.getElementById(id);
+const cache=new Map();let dates=[];
+const signed=(n,d=0)=>n>0?'+'+n.toFixed(d):n.toFixed(d);
+const movement=n=>n===null?'—':n>0?'↑ '+n:n<0?'↓ '+Math.abs(n):'—';
+function gameKey(g){return [g.date,g.opponent,g.result,g.score].join('|')}
+async function snapshot(date,division){
+ const key=date+'/'+division;
+ if(!cache.has(key)){
+  const r=await fetch('data/history/'+encodeURIComponent(date)+'/'+division+'.json');
+  if(!r.ok)throw Error('Snapshot unavailable: '+key);
+  cache.set(key,await r.json());
+ }
+ return cache.get(key);
+}
+function fill(select,values){select.replaceChildren();for(const [value,label] of values){const opt=document.createElement('option');opt.value=value;opt.textContent=label;select.append(opt)}}
+async function init(){
+ try{
+  const r=await fetch('data/history/index.json');if(!r.ok)throw Error('Archive index not available');
+  const index=await r.json();dates=(index.dates||[]).slice().sort().reverse();
+  if(!dates.length){$('status').textContent='No dated snapshots have been published yet.';return}
+  fill($('current'),dates.map(d=>[d,d]));updatePrevious();await render();
+ }catch(e){$('status').textContent='Could not load archives: '+e.message}
+}
+function updatePrevious(){
+ const current=$('current').value,prior=dates.filter(d=>d<current);
+ const choices=[['','No comparison available'],...prior.map(d=>[d,d])];
+ const priorSelected=$('previous').value;
+ fill($('previous'),choices);
+ $('previous').value=prior.includes(priorSelected)?priorSelected:(prior[0]||'');
+}
+async function render(){
+ try{
+  const division=$('division').value,date=$('current').value,priorDate=$('previous').value;
+  const current=await snapshot(date,division);
+  const previous=priorDate?await snapshot(priorDate,division):null;
+  const before=new Map((previous?.teams||[]).map(t=>[String(t.id),t]));
+  const entries=current.teams.map(t=>{const old=before.get(String(t.id));return {team:t,old,delta:old?old.rank-t.rank:null,scoreDelta:old?t.merit_score-old.merit_score:null}});
+  $('status').textContent=division.toUpperCase()+' · '+date+' · '+current.teams.length+' teams'+(priorDate?' · compared with '+priorDate:' · first available snapshot; no movement yet');
+  const eligible=entries.filter(e=>e.delta!==null&&e.delta!==0);
+  function leaders(up){
+   const ranked=eligible.filter(e=>up?e.delta>0:e.delta<0).sort((a,b)=>up?b.delta-a.delta:a.delta-b.delta).slice(0,5);
+   const target=$(up?'risers':'fallers');target.replaceChildren();
+   if(!ranked.length){target.textContent='No movements available for this comparison.';return}
+   const list=document.createElement('ol');
+   for(const e of ranked){const item=document.createElement('li');item.textContent=e.team.name+' · '+movement(e.delta)+' (now #'+e.team.rank+')';item.className=up?'up':'down';list.append(item)}
+   target.append(list);
+  }
+  $('overview').classList.toggle('hidden',!previous);if(previous){leaders(true);leaders(false)}
+  const term=$('search').value.toLowerCase();
+  $('rows').replaceChildren();
+  for(const e of entries.filter(e=>(e.team.name+' '+e.team.conference).toLowerCase().includes(term))){
+   const t=e.team,tr=document.createElement('tr');
+   const cells=[t.rank,t.name,t.wins+'–'+t.losses,t.merit_score.toFixed(2),e.old?'#'+e.old.rank:'—',movement(e.delta),e.scoreDelta===null?'—':signed(e.scoreDelta,2)];
+   for(let i=0;i<cells.length;i++){const td=document.createElement('td');td.textContent=cells[i];if(i===5&&e.delta!==null)td.className=e.delta>0?'up':e.delta<0?'down':'';tr.append(td)}
+   tr.tabIndex=0;tr.setAttribute('aria-label','Inspect '+t.name);
+   const show=()=>inspect(e,date,priorDate);tr.addEventListener('click',show);tr.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();show()}});
+   $('rows').append(tr);
+  }
+  $('detail').textContent='Select a team to inspect the comparison and games.';
+ }catch(e){$('status').textContent='Comparison unavailable: '+e.message;$('rows').replaceChildren();$('overview').classList.add('hidden')}
+}
+function inspect(e,date,priorDate){
+ const t=e.team,old=e.old;
+ const priorGames=new Set((old?.games||[]).map(gameKey));
+ const newGames=old?t.games.filter(g=>!priorGames.has(gameKey(g))):[];
+ const games=old?(newGames.length?newGames.map(g=>g.date+' '+g.result+' '+g.score+' vs '+g.opponent).join('\n'):'No additional completed games in the selected period.'):'No earlier snapshot for this team; game changes cannot be determined.';
+ $('detail').textContent=t.name+' · '+t.conference+'\n'+date+': #'+t.rank+' ('+t.wins+'–'+t.losses+') · merit '+t.merit_score.toFixed(2)+'\n'+(old?priorDate+': #'+old.rank+' ('+old.wins+'–'+old.losses+') · merit '+old.merit_score.toFixed(2)+'\nRank movement: '+movement(e.delta)+' · merit change: '+signed(e.scoreDelta,2):'No previous snapshot for comparison.')+'\n\nCompleted games added since comparison:\n'+games+'\n\nNote: Game results provide context, but changes also depend on opponents\' results and conference-strength recalculation; this is not a causal attribution.';
+}
+$('division').addEventListener('change',render);
+$('current').addEventListener('change',()=>{updatePrevious();render()});
+$('previous').addEventListener('change',render);
+$('search').addEventListener('input',render);
+init();
+</script></body></html>
