@@ -65,6 +65,9 @@ jobs:
           mkdir -p site/data/experimental
           cp index.html experimental.html site/
           cp data/experimental/*.json site/data/experimental/
+      - name: Audit rankings and generate review report
+        if: steps.clock.outputs.run == 'true'
+        run: python scripts/audit_rankings.py --source data/experimental --output site/audit.md
       - name: Archive source records and built website before deployment
         if: steps.clock.outputs.run == 'true'
         uses: actions/upload-artifact@v4
