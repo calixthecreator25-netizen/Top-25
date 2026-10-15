@@ -7,10 +7,10 @@ def run(src, dest, season, as_of):
     dest.mkdir(parents=True, exist_ok=True)
     def read(name):
         return json.loads((src / f"{name}_{season}.json").read_text())["records"]
-    teams = {t["id"]:t for t in read("all_teams") if t.get("classification") in ("fbs","fcs")}
-    games = {g["id"]:g for g in read("fbs_games")+read("fcs_games")}
+    teams = {t["id"]:t for t in read("all_teams") if str(t.get("classification","")).lower() in ("fbs","fcs")}
+    games = {g["id"]:g for g in read("fbs_games")+read("fcs_games")}\n    if not teams or not games:\n        raise ValueError("Missing Division I teams or game schedule; refusing to publish empty rankings")
     valid = [g for g in games.values() if g.get("completed") is True
-             and g.get("startDate","")[:10] <= as_of
+             and g.get("startDate") and g["startDate"][:10] <= as_of
              and g.get("homePoints") is not None and g.get("awayPoints") is not None
              and (g.get("homeId") in teams or g.get("awayId") in teams)]
     d1 = [g for g in valid if g["homeId"] in teams and g["awayId"] in teams]
@@ -49,7 +49,7 @@ def run(src, dest, season, as_of):
     for division in ("FBS","FCS"):
         rows=[]
         for i,t in teams.items():
-            if t["classification"].upper()!=division: continue
+            if str(t["classification"]).upper()!=division: continue
             gs=records[i]; n=len(gs)
             wins=sum(g["result"]=="W" for g in gs)
             losses=sum(g["result"]=="L" for g in gs)
@@ -65,16 +65,16 @@ def run(src, dest, season, as_of):
             rows.append({"id":str(i),"name":t["school"],"conference":t.get("conference") or "Independent",
                 "wins":wins,"losses":losses,"ties":ties,"merit_score":round(score,4),
                 "components":components,"games":gs})
-        rows.sort(key=lambda t:(-t["merit_score"],-t["wins"],t["name"]))
+        rows.sort(key=lambda t:(t["wins"]+t["losses"]+t["ties"]==0,-t["merit_score"],-t["wins"],t["name"]))
         for j,t in enumerate(rows):
             t["rank"]=j+1
             t["team_above"]=rows[j-1]["name"] if j else None
             t["gap_to_team_above"]=round(rows[j-1]["merit_score"]-t["merit_score"],4) if j else 0
         payload={"season":season,"division":division,"as_of":as_of,
-            "status":"EXPERIMENTAL_NOT_OFFICIAL","methodology_version":"experimental-0.1",
+            "status":"EXPERIMENTAL_NOT_OFFICIAL","methodology_version":"experimental-0.2",
             "source":"CollegeFootballData API","games_involving_division_i":len(valid),
             "notes":["Unvalidated opponent/conference model","No subjective prestige or scoring margin",
-                     "Neutral scores for teams without games; not official rankings"],
+                     "Teams without completed games placed below teams with results; not official rankings"],
             "teams":rows}
         (dest/f"{division.lower()}.json").write_text(json.dumps(payload,separators=(",",":")))
         print(division,len(rows),"ranked teams; leader:",rows[0]["name"])
