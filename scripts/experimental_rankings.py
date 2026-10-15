@@ -8,7 +8,9 @@ def run(src, dest, season, as_of):
     def read(name):
         return json.loads((src / f"{name}_{season}.json").read_text())["records"]
     teams = {t["id"]:t for t in read("all_teams") if str(t.get("classification","")).lower() in ("fbs","fcs")}
-    games = {g["id"]:g for g in read("fbs_games")+read("fcs_games")}\n    if not teams or not games:\n        raise ValueError("Missing Division I teams or game schedule; refusing to publish empty rankings")
+    games = {g["id"]:g for g in read("fbs_games")+read("fcs_games")}
+    if not teams or not games:
+        raise ValueError("Missing Division I teams or game schedule; refusing to publish empty rankings")
     valid = [g for g in games.values() if g.get("completed") is True
              and g.get("startDate") and g["startDate"][:10] <= as_of
              and g.get("homePoints") is not None and g.get("awayPoints") is not None
