@@ -86,6 +86,9 @@ jobs:
       - name: Audit rankings and generate review report
         if: steps.clock.outputs.run == 'true'
         run: python scripts/audit_rankings.py --source data/experimental --output site/audit.md
+      - name: Audit matchup consistency and conference evidence
+        if: steps.clock.outputs.run == 'true'
+        run: python scripts/model_audit.py --source data/experimental --output site
       - name: Archive source records and built website before deployment
         if: steps.clock.outputs.run == 'true'
         uses: actions/upload-artifact@v4
