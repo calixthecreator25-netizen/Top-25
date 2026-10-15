@@ -11,7 +11,7 @@ on:
     - cron: '0 12 * * 1'
     - cron: '0 13 * * 1'
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 concurrency:
@@ -56,13 +56,27 @@ jobs:
       - name: Generate experimental rankings
         if: steps.clock.outputs.run == 'true'
         run: python scripts/experimental_rankings.py --season ${{ github.event.inputs.season || '2026' }} --source data/raw --output data/experimental
+      - name: Archive dated snapshots and calculate movement
+        if: steps.clock.outputs.run == 'true'
+        run: python scripts/archive_rankings.py --current data/experimental --history data/history
+      - name: Persist ranking history in repository
+        if: steps.clock.outputs.run == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/history/
+          if ! git diff --cached --quiet; then
+            git commit -m "Archive experimental ranking snapshot"
+            git push
+          fi
       - name: Run unit tests
         if: steps.clock.outputs.run == 'true'
         run: python -m unittest discover -s tests -v
       - name: Assemble static site
         if: steps.clock.outputs.run == 'true'
         run: |
-          mkdir -p site/data/experimental
+          mkdir -p site/data/experimental site/data/history
+          cp -R data/history/. site/data/history/
           cp index.html experimental.html site/
           cp data/experimental/*.json site/data/experimental/
       - name: Audit rankings and generate review report
