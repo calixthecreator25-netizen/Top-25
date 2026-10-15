@@ -62,6 +62,16 @@ jobs:
           mkdir -p site/data/experimental
           cp index.html experimental.html site/
           cp data/experimental/*.json site/data/experimental/
+      - name: Archive source records and built website before deployment
+        if: steps.clock.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: experimental-source-rankings-and-website
+          path: |
+            data/raw/
+            data/experimental/
+            site/
+          retention-days: 30
       - uses: actions/configure-pages@v5
         if: steps.clock.outputs.run == 'true'
         with:
@@ -74,12 +84,3 @@ jobs:
         id: deployment
         if: steps.clock.outputs.run == 'true'
         uses: actions/deploy-pages@v4
-      - name: Archive source records for audit
-        if: always() && steps.clock.outputs.run == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: experimental-source-and-rankings
-          path: |
-            data/raw/
-            data/experimental/
-          retention-days: 30
