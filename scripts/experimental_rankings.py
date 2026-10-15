@@ -88,7 +88,7 @@ def run(src, dest, season, as_of):
                      "Teams without completed games placed below teams with results; not official rankings"],
             "teams":rows}
         (dest/f"{division.lower()}.json").write_text(json.dumps(payload,separators=(",",":")))
-        print(division,len(rows),"ranked teams; leader:",rows[0]["name"])
+        print(division,len(rows),"ranked teams; leader:",rows[0]["name"] if rows else "none (no teams in division)")
     print("Completed relevant games",len(valid),"Division I vs Division I",len(d1))
 
 if __name__=="__main__":
