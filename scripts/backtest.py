@@ -1,7 +1,10 @@
 """Retrospective rolling-origin test: use rankings before each game to predict its winner."""
 import argparse,collections,datetime,json,tempfile
 from pathlib import Path
-from scripts.experimental_rankings import run
+try:
+ from scripts.experimental_rankings import run
+except ModuleNotFoundError:
+ from experimental_rankings import run
 
 def backtest(source,season,output,start_week=4):
  source=Path(source);output=Path(output)
