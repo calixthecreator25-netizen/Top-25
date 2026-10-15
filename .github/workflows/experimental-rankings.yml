@@ -56,6 +56,9 @@ jobs:
       - name: Generate experimental rankings
         if: steps.clock.outputs.run == 'true'
         run: python scripts/experimental_rankings.py --season ${{ github.event.inputs.season || '2026' }} --source data/raw --output data/experimental
+      - name: Calculate conference standings
+        if: steps.clock.outputs.run == 'true'
+        run: python scripts/conference_standings.py --raw data/raw --rankings data/experimental --output data/conferences --season ${{ github.event.inputs.season || '2026' }}
       - name: Archive dated snapshots and calculate movement
         if: steps.clock.outputs.run == 'true'
         run: python scripts/archive_rankings.py --current data/experimental --history data/history
@@ -75,10 +78,10 @@ jobs:
       - name: Assemble static site
         if: steps.clock.outputs.run == 'true'
         run: |
-          mkdir -p site/data/experimental site/data/history
+          mkdir -p site/data/experimental site/data/history site/data/conferences
           cp -R data/history/. site/data/history/
-          cp index.html experimental.html history.html site/
-          cp data/experimental/*.json site/data/experimental/
+          cp index.html experimental.html history.html conferences.html releases.html site/
+          cp data/experimental/*.json site/data/experimental/\n          cp data/conferences/*.json site/data/conferences/
       - name: Audit rankings and generate review report
         if: steps.clock.outputs.run == 'true'
         run: python scripts/audit_rankings.py --source data/experimental --output site/audit.md
