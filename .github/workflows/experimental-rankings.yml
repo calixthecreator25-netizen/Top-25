@@ -77,7 +77,7 @@ jobs:
         run: |
           mkdir -p site/data/experimental site/data/history
           cp -R data/history/. site/data/history/
-          cp index.html experimental.html site/
+          cp index.html experimental.html history.html site/
           cp data/experimental/*.json site/data/experimental/
       - name: Audit rankings and generate review report
         if: steps.clock.outputs.run == 'true'
