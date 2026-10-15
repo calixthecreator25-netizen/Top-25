@@ -24,7 +24,18 @@ def audit(folder):
         inversions = [(a,b) for a in one_loss for b in undefeated if a["rank"] < b["rank"]]
         output.append(f"### Review queue: {len(inversions)} one-loss-over-undefeated comparisons")
         for a,b in inversions[:30]:
-            output.append(f'- #{a["rank"]} {a["name"]} ({a["wins"]}-{a["losses"]}) over #{b["rank"]} {b["name"]} ({b["wins"]}-{b["losses"]}); merit difference {a["merit_score"]-b["merit_score"]:.2f}')
+            weights={"schedule_strength":.4,"result_quality":.3,"win_percentage":.2,"conference_strength":.1}
+            breakdown=", ".join(f'{k}: {(a["components"][k]-b["components"][k])*w:+.2f}' for k,w in weights.items())
+            output.append(f'- #{a["rank"]} {a["name"]} ({a["wins"]}-{a["losses"]}) over #{b["rank"]} {b["name"]} ({b["wins"]}-{b["losses"]}); merit difference {a["merit_score"]-b["merit_score"]:.2f}; {breakdown}')
+        output.append("")
+        output.append("### Conference evidence coverage")
+        conference={}
+        for t in teams:
+            conference.setdefault(t["conference"],(t["components"]["conference_strength"],t.get("conference_sample_size",0)))
+        output.append("| Conference | Strength | Interconference result observations |")
+        output.append("|---|---:|---:|")
+        for name,(strength,count) in sorted(conference.items(),key=lambda item:(-item[1][0],item[0])):
+            output.append(f"| {name} | {strength:.2f} | {count} |")
         output.append("")
         missing = sum(t.get("lower_division_games",0) for t in teams)
         output.append(f"Lower-division games counted in records: {missing}. Their opponents are not rated for SOS or result quality.")
