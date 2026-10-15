@@ -28,6 +28,9 @@ class ExperimentalRankingsTests(unittest.TestCase):
             alpha=next(t for t in fbs["teams"] if t["name"]=="Alpha")
             self.assertEqual((alpha["wins"],alpha["losses"],len(alpha["games"])),(1,0,1))
             self.assertEqual(len(fcs["teams"][0]["games"]),0)
+            beta=next(t for t in fbs["teams"] if t["name"]=="Beta")
+            self.assertEqual(beta["components"]["result_quality"],0)
+            self.assertGreater(beta["components"]["schedule_strength"],0)
 
     def test_unplayed_team_does_not_outrank_team_with_results(self):
         with tempfile.TemporaryDirectory() as temp:
