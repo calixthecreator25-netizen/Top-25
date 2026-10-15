@@ -81,7 +81,8 @@ jobs:
           mkdir -p site/data/experimental site/data/history site/data/conferences
           cp -R data/history/. site/data/history/
           cp index.html experimental.html history.html conferences.html releases.html site/
-          cp data/experimental/*.json site/data/experimental/\n          cp data/conferences/*.json site/data/conferences/
+          cp data/experimental/*.json site/data/experimental/
+          cp data/conferences/*.json site/data/conferences/
       - name: Audit rankings and generate review report
         if: steps.clock.outputs.run == 'true'
         run: python scripts/audit_rankings.py --source data/experimental --output site/audit.md
