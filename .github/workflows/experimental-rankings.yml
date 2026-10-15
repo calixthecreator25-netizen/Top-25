@@ -50,6 +50,9 @@ jobs:
       - name: Collect snapshots
         if: steps.clock.outputs.run == 'true'
         run: python scripts/fetch_cfbd.py --season ${{ github.event.inputs.season || '2026' }} --output data/raw
+      - name: Validate Python syntax
+        if: steps.clock.outputs.run == 'true'
+        run: python -m compileall -q scripts tests
       - name: Generate experimental rankings
         if: steps.clock.outputs.run == 'true'
         run: python scripts/experimental_rankings.py --season ${{ github.event.inputs.season || '2026' }} --source data/raw --output data/experimental
