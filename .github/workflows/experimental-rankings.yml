@@ -1,0 +1,83 @@
+name: Refresh experimental FBS and FCS rankings
+on:
+  workflow_dispatch:
+    inputs:
+      season:
+        description: Season year
+        required: true
+        default: '2026'
+  schedule:
+    # Both UTC hours cover 7am America/Chicago during DST and standard time.
+    - cron: '0 12 * * 1'
+    - cron: '0 13 * * 1'
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: merit-experimental-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+    steps:
+      - name: Check Central time for scheduled jobs
+        id: clock
+        run: |
+          python - <<'PY'
+          import os,datetime
+          from zoneinfo import ZoneInfo
+          event=os.getenv('GITHUB_EVENT_NAME','')
+          now=datetime.datetime.now(ZoneInfo('America/Chicago'))
+          run=(event=='workflow_dispatch' or (now.weekday()==0 and now.hour==7))
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write(f"run={'true' if run else 'false'}\n")
+          print('Local time:',now,'Run:',run)
+          PY
+      - uses: actions/checkout@v4
+        if: steps.clock.outputs.run == 'true'
+      - uses: actions/setup-python@v5
+        if: steps.clock.outputs.run == 'true'
+        with:
+          python-version: '3.12'
+      - name: Check data key
+        if: steps.clock.outputs.run == 'true'
+        run: test -n "$CFBD_API_KEY" || { echo "::error::CFBD_API_KEY missing"; exit 1; }
+      - name: Collect snapshots
+        if: steps.clock.outputs.run == 'true'
+        run: python scripts/fetch_cfbd.py --season ${{ github.event.inputs.season || '2026' }} --output data/raw
+      - name: Generate experimental rankings
+        if: steps.clock.outputs.run == 'true'
+        run: python scripts/experimental_rankings.py --season ${{ github.event.inputs.season || '2026' }} --source data/raw --output data/experimental
+      - name: Run unit tests
+        if: steps.clock.outputs.run == 'true'
+        run: python -m unittest discover -s tests -v
+      - name: Assemble static site
+        if: steps.clock.outputs.run == 'true'
+        run: |
+          mkdir -p site/data/experimental
+          cp index.html experimental.html site/
+          cp data/experimental/*.json site/data/experimental/
+      - uses: actions/configure-pages@v5
+        if: steps.clock.outputs.run == 'true'
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.clock.outputs.run == 'true'
+        with:
+          path: site
+      - name: Deploy experimental website
+        id: deployment
+        if: steps.clock.outputs.run == 'true'
+        uses: actions/deploy-pages@v4
+      - name: Archive source records for audit
+        if: steps.clock.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: experimental-source-and-rankings
+          path: |
+            data/raw/
+            data/experimental/
+          retention-days: 30
