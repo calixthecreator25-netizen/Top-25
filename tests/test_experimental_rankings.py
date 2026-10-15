@@ -29,5 +29,22 @@ class ExperimentalRankingsTests(unittest.TestCase):
             self.assertEqual((alpha["wins"],alpha["losses"],len(alpha["games"])),(1,0,1))
             self.assertEqual(len(fcs["teams"][0]["games"]),0)
 
+    def test_unplayed_team_does_not_outrank_team_with_results(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);src=root/"raw";out=root/"out";src.mkdir()
+            teams=[
+                {"id":1,"school":"Winner","classification":"fbs","conference":"A"},
+                {"id":2,"school":"Loser","classification":"fbs","conference":"B"},
+                {"id":3,"school":"Idle","classification":"fbs","conference":"C"},
+                {"id":4,"school":"FCS","classification":"fcs","conference":"D"}]
+            game={"id":1,"homeId":1,"awayId":2,"homeTeam":"Winner","awayTeam":"Loser",
+                  "homePoints":21,"awayPoints":14,"completed":True,"startDate":"2026-10-01"}
+            for name,records in [("all_teams",teams),("fbs_games",[game]),("fcs_games",[game])]:
+                (src/(name+"_2026.json")).write_text(json.dumps({"records":records}))
+            run(src,out,2026,"2026-10-15")
+            rows=json.loads((out/"fbs.json").read_text())["teams"]
+            self.assertEqual(rows[-1]["name"],"Idle")
+            self.assertEqual(len(rows),3)
+
 if __name__=="__main__":
     unittest.main()
