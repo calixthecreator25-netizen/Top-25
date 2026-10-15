@@ -49,5 +49,51 @@ class ExperimentalRankingsTests(unittest.TestCase):
             self.assertEqual(rows[-1]["name"],"Idle")
             self.assertEqual(len(rows),3)
 
+
+    def test_g5_power_conference_upsets_are_rewarded(self):
+        """A smaller-conference team's wins over stronger opponents earn result credit."""
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);src=root/"raw";out=root/"out";src.mkdir()
+            teams=[
+                {"id":1,"school":"Underdog","classification":"fbs","conference":"Small"},
+                {"id":2,"school":"Power A","classification":"fbs","conference":"Power"},
+                {"id":3,"school":"Power B","classification":"fbs","conference":"Power"},
+                {"id":4,"school":"Power C","classification":"fbs","conference":"Power"},
+                {"id":5,"school":"Weak","classification":"fbs","conference":"Small"},
+                {"id":6,"school":"Weak B","classification":"fbs","conference":"Small"},
+                {"id":7,"school":"Weak C","classification":"fbs","conference":"Small"}]
+            games=[]
+            for game_id,home,away in [(1,1,2),(2,1,3),(3,1,4),
+                                       (4,2,5),(5,3,6),(6,4,7),
+                                       (7,5,6),(8,5,7)]:
+                games.append({"id":game_id,"homeId":home,"awayId":away,
+                              "homeTeam":teams[home-1]["school"],"awayTeam":teams[away-1]["school"],
+                              "homePoints":21,"awayPoints":7,"completed":True,"startDate":"2026-10-01"})
+            for name,records in [("all_teams",teams),("fbs_games",games),("fcs_games",games)]:
+                (src/(name+"_2026.json")).write_text(json.dumps({"records":records}))
+            run(src,out,2026,"2026-10-15")
+            rows=json.loads((out/"fbs.json").read_text())["teams"]
+            underdog=next(t for t in rows if t["name"]=="Underdog")
+            self.assertEqual((underdog["wins"],underdog["losses"]),(3,0))
+            self.assertGreater(underdog["components"]["result_quality"],0)
+            self.assertEqual(underdog["rank"],1)
+
+    def test_conference_strength_uses_results_not_conference_name(self):
+        """Changing only the names of conferences must not change merit scores."""
+        def compute(names):
+            with tempfile.TemporaryDirectory() as temp:
+                root=Path(temp);src=root/"raw";out=root/"out";src.mkdir()
+                teams=[{"id":i,"school":f"Team {i}","classification":"fbs",
+                        "conference":names[0] if i in (1,2) else names[1]} for i in range(1,5)]
+                games=[{"id":i,"homeId":home,"awayId":away,
+                        "homeTeam":f"Team {home}","awayTeam":f"Team {away}",
+                        "homePoints":21,"awayPoints":7,"completed":True,"startDate":"2026-10-01"}
+                       for i,(home,away) in enumerate([(1,3),(2,4),(3,2)],1)]
+                for name,records in [("all_teams",teams),("fbs_games",games),("fcs_games",games)]:
+                    (src/(name+"_2026.json")).write_text(json.dumps({"records":records}))
+                run(src,out,2026,"2026-10-15")
+                return {t["id"]:t["merit_score"] for t in json.loads((out/"fbs.json").read_text())["teams"]}
+        self.assertEqual(compute(("SEC","Sun Belt")),compute(("Sun Belt","SEC")))
+
 if __name__=="__main__":
     unittest.main()
