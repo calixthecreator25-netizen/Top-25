@@ -1,0 +1,38 @@
+name: Collect college football source snapshots
+on:
+  workflow_dispatch:
+    inputs:
+      season:
+        description: Season year
+        required: true
+        default: '2026'
+  schedule:
+    - cron: '0 11 * * 1'
+permissions:
+  contents: read
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    env:
+      CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check credentials
+        run: |
+          if [ -z "$CFBD_API_KEY" ]; then
+            echo "::notice::CFBD_API_KEY not configured. Source ingestion is not enabled."
+            exit 0
+          fi
+      - name: Fetch source snapshots
+        if: env.CFBD_API_KEY != ''
+        run: python scripts/fetch_cfbd.py --season ${{ github.event.inputs.season || '2026' }} --output data/raw
+      - name: Upload raw snapshots for audit
+        if: env.CFBD_API_KEY != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfbd-source-snapshots
+          path: data/raw/
+          retention-days: 30
