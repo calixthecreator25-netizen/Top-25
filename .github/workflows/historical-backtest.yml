@@ -1,0 +1,36 @@
+name: Historical model backtest
+on:
+  workflow_dispatch:
+    inputs:
+      season:
+        description: Historical season (2023, 2024 or 2025)
+        required: true
+        type: choice
+        options:
+          - '2025'
+          - '2024'
+          - '2023'
+permissions:
+  contents: read
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    env:
+      CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check data key
+        run: test -n "$CFBD_API_KEY" || { echo "::error::CFBD_API_KEY missing"; exit 1; }
+      - name: Download historical source records
+        run: python scripts/fetch_cfbd.py --season ${{ inputs.season }} --output data/backtest-raw
+      - name: Run rolling historical validation
+        run: python scripts/backtest.py --source data/backtest-raw --season ${{ inputs.season }} --output results/backtest-${{ inputs.season }}.json
+      - name: Save validation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: historical-backtest-${{ inputs.season }}
+          path: results/backtest-${{ inputs.season }}.json
+          retention-days: 90
