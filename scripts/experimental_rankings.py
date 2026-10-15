@@ -57,25 +57,31 @@ def run(src, dest, season, as_of):
             losses=sum(g["result"]=="L" for g in gs)
             ties=n-wins-losses
             relevant=[g for g in gs if g["opponent_rating"] is not None]
+            lower_division_games=n-len(relevant)
             sos=sum(g["opponent_rating"] for g in relevant)/len(relevant) if relevant else 50
-            quality=sum((100 if g["result"]=="W" else 50 if g["result"]=="T" else 0)*.5+g["opponent_rating"]*.5 for g in relevant)/len(relevant) if relevant else 50
+            # A loss never receives win-quality credit merely for facing a strong opponent.
+            # Opponent quality is rewarded on wins; SOS independently rewards tough schedules.
+            quality=sum((g["opponent_rating"] if g["result"]=="W" else
+                         .5*g["opponent_rating"] if g["result"]=="T" else 0)
+                        for g in relevant)/len(relevant) if relevant else 50
             wpct=100*(wins+.5*ties)/n if n else 50
             conference=conf.get((t["classification"],t.get("conference")),50)
             components={"schedule_strength":round(sos,4),"result_quality":round(quality,4),
                         "win_percentage":round(wpct,4),"conference_strength":round(conference,4)}
             score=.4*sos+.3*quality+.2*wpct+.1*conference
             rows.append({"id":str(i),"name":t["school"],"conference":t.get("conference") or "Independent",
-                "wins":wins,"losses":losses,"ties":ties,"merit_score":round(score,4),
+                "wins":wins,"losses":losses,"ties":ties,"lower_division_games":lower_division_games,"merit_score":round(score,4),
                 "components":components,"games":gs})
         rows.sort(key=lambda t:(t["wins"]+t["losses"]+t["ties"]==0,-t["merit_score"],-t["wins"],t["name"]))
         for j,t in enumerate(rows):
             t["rank"]=j+1
             t["team_above"]=rows[j-1]["name"] if j else None
-            t["gap_to_team_above"]=round(rows[j-1]["merit_score"]-t["merit_score"],4) if j else 0
+            t["gap_to_team_above"]=round(rows[j-1]["merit_score"]-t["merit_score"],4) if j and rows[j-1]["wins"]+rows[j-1]["losses"]+rows[j-1]["ties"] and t["wins"]+t["losses"]+t["ties"] else None
         payload={"season":season,"division":division,"as_of":as_of,
-            "status":"EXPERIMENTAL_NOT_OFFICIAL","methodology_version":"experimental-0.2",
+            "status":"EXPERIMENTAL_NOT_OFFICIAL","methodology_version":"experimental-0.3",
             "source":"CollegeFootballData API","games_involving_division_i":len(valid),
             "notes":["Unvalidated opponent/conference model","No subjective prestige or scoring margin",
+                     "Lower-division games count in W-L but have no opponent rating; D1-only quality and SOS",
                      "Teams without completed games placed below teams with results; not official rankings"],
             "teams":rows}
         (dest/f"{division.lower()}.json").write_text(json.dumps(payload,separators=(",",":")))
