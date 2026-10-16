@@ -46,6 +46,7 @@ def validate(source, output, season):
         raise ValueError(f"Conflicting duplicate game records: {conflicts[:10]}")
     unknown = []
     bad_scores = []
+    incomplete_scores = []
     completed = 0
     for g in by_game.values():
         if g.get("completed") is not True:
@@ -57,10 +58,14 @@ def validate(source, output, season):
         if str(home) not in teams or str(away) not in teams:
             unknown.append(g.get("id"))
         scores = (g.get("homePoints"),g.get("awayPoints"))
-        if any(not isinstance(n,int) or isinstance(n,bool) or n<0 for n in scores):
+        if any(n is None for n in scores):
+            incomplete_scores.append(g.get("id"))
+        elif any(not isinstance(n,int) or isinstance(n,bool) or n<0 for n in scores):
             bad_scores.append(g.get("id"))
     if bad_scores:
         raise ValueError(f"Completed games with invalid scores or participants: {bad_scores[:10]}")
+    if completed == len(incomplete_scores):
+        raise ValueError("No completed games with scores; refusing to publish")
     if completed == 0:
         raise ValueError("No completed games available; refusing to publish")
     report = {"season":season,"fbs_teams":len(divisions["fbs"]),"fcs_teams":len(divisions["fcs"]),
@@ -68,7 +73,9 @@ def validate(source, output, season):
               "completed_games":completed,"completed_games_with_unmapped_opponents":len(unknown),
               "unmapped_game_ids_sample":unknown[:20],
               "duplicate_records":len(fbs_games)+len(fcs_games)-len(by_game),
-              "status":"REVIEW_REQUIRED" if unknown else "PASS"}
+              "completed_games_missing_scores":len(incomplete_scores),
+              "missing_score_game_ids_sample":incomplete_scores[:20],
+              "status":"REVIEW_REQUIRED" if unknown or incomplete_scores else "PASS"}
     out=Path(output);out.parent.mkdir(parents=True,exist_ok=True)
     out.write_text(json.dumps(report,indent=2)+"\n")
     print(json.dumps(report,indent=2))
