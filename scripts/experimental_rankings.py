@@ -71,7 +71,7 @@ def run(src, dest, season, as_of):
             conference_sample_size=conf_sample_sizes.get(conference_key,0)
             components={"schedule_strength":round(sos,4),"result_quality":round(quality,4),
                         "win_percentage":round(wpct,4),"conference_strength":round(conference,4)}
-            score=.4*sos+.3*quality+.2*wpct+.1*conference
+            score=.5*sos+.25*quality+.15*wpct+.1*conference
             rows.append({"id":str(i),"name":t["school"],"conference":t.get("conference") or "Independent",
                 "wins":wins,"losses":losses,"ties":ties,"lower_division_games":lower_division_games,"conference_sample_size":conference_sample_size,"merit_score":round(score,4),
                 "components":components,"games":gs})
@@ -81,7 +81,7 @@ def run(src, dest, season, as_of):
             t["team_above"]=rows[j-1]["name"] if j else None
             t["gap_to_team_above"]=round(rows[j-1]["merit_score"]-t["merit_score"],4) if j and rows[j-1]["wins"]+rows[j-1]["losses"]+rows[j-1]["ties"] and t["wins"]+t["losses"]+t["ties"] else None
         payload={"season":season,"division":division,"as_of":as_of,
-            "status":"EXPERIMENTAL_NOT_OFFICIAL","methodology_version":"experimental-0.4",
+            "status":"EXPERIMENTAL_NOT_OFFICIAL","methodology_version":"experimental-0.5",
             "source":"CollegeFootballData API","games_involving_division_i":len(valid),
             "notes":["Unvalidated opponent/conference model","No subjective prestige or scoring margin",
                      "Lower-division games count in W-L but have no opponent rating; D1-only quality and SOS",
