@@ -43,23 +43,16 @@ def compute(payload):
     expected = {"champion":1,"runner_up":1,"semifinal":2,"quarterfinal":4,"first_round":4}
     if any(sum(p["finish"]==k for p in playoff)!=n for k,n in expected.items()):
         raise ValueError("Invalid 12-team playoff advancement distribution")
-    champion_id = next(p["id"] for p in playoff if p["finish"]=="champion")
+    sorted_playoff = sorted(playoff, key=lambda p:(TIERS[p["finish"]],-p["prior_merit"],p["id"]))
     lookup = {t["id"]:t for t in fbs}
-    champion = dict(lookup[champion_id],rank=1,reason="defending_national_champion")
-    eligible = sorted((t for t in fbs if t["id"]!=champion_id),key=lambda t:(-t["talent_score"],t["id"]))
-    top25 = [champion] + [dict(t,rank=i,reason="roster_talent") for i,t in enumerate(eligible[:24],2)]
-    fcs_champion_id = payload.get("fcs_champion_id")
-    if fcs_champion_id is not None and fcs_champion_id not in {t["id"] for t in fcs}:
-        raise ValueError("FCS champion must be an FCS program")
-    fcs_eligible = sorted((t for t in fcs if t["id"]!=fcs_champion_id),key=lambda t:(-t["talent_score"],t["id"]))
-    fcs_lookup = {t["id"]:t for t in fcs}
-    fcs_top25 = ([dict(fcs_lookup[fcs_champion_id],rank=1,reason="defending_national_champion")] if fcs_champion_id is not None else [])
-    fcs_top25 += [dict(t,rank=i,reason="roster_talent") for i,t in enumerate(fcs_eligible[:25-len(fcs_top25)],len(fcs_top25)+1)]
+    locked = [dict(lookup[p["id"]],rank=i,reason="prior_playoff_"+p["finish"]) for i,p in enumerate(sorted_playoff,1)]
+    eligible = sorted((t for t in fbs if t["id"] not in pids),key=lambda t:(-t["talent_score"],t["id"]))
+    top25 = locked + [dict(t,rank=i,reason="roster_talent") for i,t in enumerate(eligible[:13],13)]
     def talent_order(teams):
         return [dict(t,talent_rank=i) for i,t in enumerate(sorted(teams,key=lambda t:(-t["talent_score"],t["id"])),1)]
     return {"season":payload["season"],"preseason_top25":top25,
             "fbs_talent":talent_order(fbs),"fcs_talent":talent_order(fcs),
-            "fcs_preseason_top25":fcs_top25,"fcs_champion_verified":fcs_champion_id is not None}
+}
 
 if __name__=="__main__":
     if len(sys.argv)!=3:
