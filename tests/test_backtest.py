@@ -16,5 +16,8 @@ class BacktestTests(unittest.TestCase):
    result=backtest(src,2025,p/"result.json",start_week=2)
    self.assertGreater(result["evaluated_games"],0)
    self.assertLessEqual(result["accuracy"],1)
+   self.assertIn("prior_win_percentage",result["benchmarks"])
+   self.assertIn("always_home",result["benchmarks"])
+   self.assertLessEqual(result["benchmarks"]["prior_win_percentage"]["correct"],result["evaluated_games"])
    self.assertTrue((p/"result.json").exists())
 if __name__=="__main__":unittest.main()
