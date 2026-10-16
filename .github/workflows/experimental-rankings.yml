@@ -57,6 +57,9 @@ jobs:
       - name: Validate Python syntax
         if: steps.clock.outputs.run == 'true'
         run: python -m compileall -q scripts tests
+      - name: Validate source coverage and game integrity
+        if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
+        run: python scripts/validate_sources.py --season ${{ github.event.inputs.season || '2026' }} --source data/raw --output data/quality/source-audit.json
       - name: Generate experimental rankings
         if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
         run: python scripts/experimental_rankings.py --season ${{ github.event.inputs.season || '2026' }} --source data/raw --output data/experimental
@@ -82,11 +85,12 @@ jobs:
       - name: Assemble static site
         if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
         run: |
-          mkdir -p site/data/experimental site/data/history site/data/conferences
+          mkdir -p site/data/experimental site/data/history site/data/conferences site/data/quality
           cp -R data/history/. site/data/history/
           cp index.html experimental.html history.html conferences.html releases.html site/
           cp data/experimental/*.json site/data/experimental/
           cp data/conferences/*.json site/data/conferences/
+          cp data/quality/*.json site/data/quality/
       - name: Audit rankings and generate review report
         if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
         run: python scripts/audit_rankings.py --source data/experimental --output site/audit.md
@@ -101,6 +105,7 @@ jobs:
           path: |
             data/raw/
             data/experimental/
+            data/quality/
             site/
           retention-days: 30
       - uses: actions/configure-pages@v5
