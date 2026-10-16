@@ -2,7 +2,7 @@
 import argparse,collections,json
 from pathlib import Path
 
-WEIGHTS={"schedule_strength":.4,"result_quality":.3,"win_percentage":.2,"conference_strength":.1}
+WEIGHTS={"schedule_strength":.5,"result_quality":.25,"win_percentage":.15,"conference_strength":.1}
 def analyze(folder):
  folder=Path(folder);report={"status":"EXPERIMENTAL_NOT_OFFICIAL","divisions":{}}
  for division in ("fbs","fcs"):
