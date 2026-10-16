@@ -1,7 +1,7 @@
 # College Football Merit Poll methodology
 
 ## In season
-Results-only rankings, without committee overrides or preseason carryover. Opponent quality, strength of schedule, wins/losses and empirically earned conference strength determine rank. FBS and FCS have separate official lists; interdivision games affect opponent quality.
+After the first four completed regular-season weeks: results-only rankings, without committee overrides or preseason carryover. Opponent quality, strength of schedule, wins/losses and empirically earned conference strength determine rank. FBS and FCS have separate official lists; interdivision games affect opponent quality.
 
 ### Experimental implementation (v0.5; not official)
 The experimental in-season score uses **50% schedule strength, 25% result quality, 15% win percentage, and 10% conference strength**. The prior **v0.4** formula (40/30/20/10) remains the historical reference. The candidate was selected using 2023–2024 development games and evaluated once on 2025 holdout games: 783/1,148 (68.21%) versus v0.4's 773/1,148 (67.33%). This small predictive advantage does not establish ranking fairness or guaranteed future superiority. Opponent ratings are calculated iteratively from completed Division I head-to-head results; they are *not* recruiting or brand prestige ratings.
@@ -14,7 +14,11 @@ The experimental in-season score uses **50% schedule strength, 25% result qualit
 - **Limitations:** the opponent model and conference calibration have not been independently validated. Missing opponent ratings can create uneven coverage. This is a demonstration, not a claim of objective certainty or an official Top 25.
 
 ## Preseason
-Only the defending FBS national champion is guaranteed preseason #1. Every other FBS program competes for places #2–25 using the same verified roster-talent score, regardless of whether it reached the previous playoffs. The champion's guaranteed position expires as soon as regular-season results are ranked; there are no protected in-season positions. For FCS, a verified `fcs_champion_id` similarly reserves preseason #1; without verified champion identification, the FCS table remains talent-ordered and is marked as lacking champion verification. Playoff-finish records still validate the FBS champion and postseason field but no longer lock #2–12.
+The preseason FBS Top 12 is reserved for the previous season's 12 playoff teams, ordered by advancement: champion, runner-up, semifinal losers, quarterfinal losers, and first-round losers. Prior-year merit breaks ties within advancement tiers. Preseason places #13–25 go to the highest-scoring remaining teams by verified roster talent.
+
+**First-month transition policy:** The preseason list is a starting point, not a permanent protection. During the first four completed regular-season weeks, rankings should blend preseason standing with on-field merit, with preseason influence decreasing weekly. The first poll following completion of Week 4 must be fully results-based, using the 50/25/15/10 formula, without preseason carryover or protected teams. The cutoff is universal across FBS programs and does not depend on when a particular conference starts league play.
+
+**Implementation status:** The preseason generator produces the playoff-seeded opening poll, and the experimental in-season generator produces pure-merit rankings. A weekly blended transition and automatic Week-4 cutoff are policy specifications, not yet implemented in the publishing workflow. Do not label the currently published early-season experimental rankings as blended polls.
 
 Roster talent weights: returning talent 35%, transfers 20%, recruiting 15%, QB/key positions 15%, coaching continuity 10%, depth 5%. All factors are normalized to 0–100. No rating may be published without verified input provenance. FCS has its own all-team preseason talent table.
 
