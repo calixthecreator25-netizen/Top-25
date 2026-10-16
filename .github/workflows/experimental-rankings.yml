@@ -55,7 +55,7 @@ jobs:
         if: steps.clock.outputs.run == 'true'
         run: python scripts/publication_gate.py --season ${{ github.event.inputs.season || '2026' }} --source data/raw --github-output "$GITHUB_OUTPUT"
       - name: Validate Python syntax
-        if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
+        if: steps.clock.outputs.run == 'true'
         run: python -m compileall -q scripts tests
       - name: Generate experimental rankings
         if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
@@ -77,7 +77,7 @@ jobs:
             git push
           fi
       - name: Run unit tests
-        if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
+        if: steps.clock.outputs.run == 'true'
         run: python -m unittest discover -s tests -v
       - name: Assemble static site
         if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
