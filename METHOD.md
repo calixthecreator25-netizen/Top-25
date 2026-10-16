@@ -3,8 +3,8 @@
 ## In season
 Results-only rankings, without committee overrides or preseason carryover. Opponent quality, strength of schedule, wins/losses and empirically earned conference strength determine rank. FBS and FCS have separate official lists; interdivision games affect opponent quality.
 
-### Experimental implementation (v0.4; not official)
-The experimental in-season score uses **40% schedule strength, 30% result quality, 20% win percentage, and 10% conference strength**. Opponent ratings are calculated iteratively from completed Division I head-to-head results; they are *not* recruiting or brand prestige ratings.
+### Experimental implementation (v0.5; not official)
+The experimental in-season score uses **50% schedule strength, 25% result quality, 15% win percentage, and 10% conference strength**. The prior **v0.4** formula (40/30/20/10) remains the historical reference. The candidate was selected using 2023–2024 development games and evaluated once on 2025 holdout games: 783/1,148 (68.21%) versus v0.4's 773/1,148 (67.33%). This small predictive advantage does not establish ranking fairness or guaranteed future superiority. Opponent ratings are calculated iteratively from completed Division I head-to-head results; they are *not* recruiting or brand prestige ratings.
 
 - **Schedule strength:** mean opponent rating for completed games against Division I teams.
 - **Result quality:** opponent rating for a win, half the opponent rating for a tie, and zero for a loss, averaged across Division I games. Losing to a strong opponent may improve the schedule component, but is not treated as a quality win.
