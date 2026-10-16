@@ -10,7 +10,7 @@ class BacktestTests(unittest.TestCase):
    games=[]
    for week in range(9):
     for n,(home,away) in enumerate([(1,2),(3,1),(2,3)]):
-     games.append({"id":week*3+n,"homeId":home,"awayId":away,"homeTeam":f"Team {home}","awayTeam":f"Team {away}","homePoints":28,"awayPoints":14,"completed":True,"startDate":f"2025-09-{1+week*7:02d}" if week<4 else ( __import__("datetime").date(2025,9,1)+__import__("datetime").timedelta(weeks=week)).isoformat()})
+     games.append({"id":week*3+n,"homeId":home,"awayId":away,"homeTeam":f"Team {home}","awayTeam":f"Team {away}","homePoints":28,"awayPoints":14,"completed":True,"startDate":(__import__("datetime").date(2025,9,1)+__import__("datetime").timedelta(weeks=week,days=n)).isoformat()})
    for name,rows in [("all_teams",teams),("fbs_games",games),("fcs_games",games)]:
     (src/(name+"_2025.json")).write_text(json.dumps({"records":rows}))
    result=backtest(src,2025,p/"result.json",start_week=2)
