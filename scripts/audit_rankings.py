@@ -24,7 +24,7 @@ def audit(folder):
         inversions = [(a,b) for a in one_loss for b in undefeated if a["rank"] < b["rank"]]
         output.append(f"### Review queue: {len(inversions)} one-loss-over-undefeated comparisons")
         for a,b in inversions[:30]:
-            weights={"schedule_strength":.4,"result_quality":.3,"win_percentage":.2,"conference_strength":.1}
+            weights={"schedule_strength":.5,"result_quality":.25,"win_percentage":.15,"conference_strength":.1}
             breakdown=", ".join(f'{k}: {(a["components"][k]-b["components"][k])*w:+.2f}' for k,w in weights.items())
             output.append(f'- #{a["rank"]} {a["name"]} ({a["wins"]}-{a["losses"]}) over #{b["rank"]} {b["name"]} ({b["wins"]}-{b["losses"]}); merit difference {a["merit_score"]-b["merit_score"]:.2f}; {breakdown}')
         output.append("")
