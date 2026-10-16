@@ -24,6 +24,7 @@ class ExperimentalRankingsTests(unittest.TestCase):
             fcs=json.loads((out/"fcs.json").read_text())
             self.assertEqual(len(fbs["teams"]),2)
             self.assertEqual(len(fcs["teams"]),1)
+            self.assertEqual(fbs["methodology_version"],"experimental-0.5")
             self.assertEqual(fbs["games_involving_division_i"],1)
             alpha=next(t for t in fbs["teams"] if t["name"]=="Alpha")
             self.assertEqual((alpha["wins"],alpha["losses"],len(alpha["games"])),(1,0,1))
@@ -31,6 +32,9 @@ class ExperimentalRankingsTests(unittest.TestCase):
             beta=next(t for t in fbs["teams"] if t["name"]=="Beta")
             self.assertEqual(beta["components"]["result_quality"],0)
             self.assertGreater(beta["components"]["schedule_strength"],0)
+            c=alpha["components"]
+            expected=.5*c["schedule_strength"]+.25*c["result_quality"]+.15*c["win_percentage"]+.1*c["conference_strength"]
+            self.assertAlmostEqual(alpha["merit_score"],expected,places=3)
 
     def test_unplayed_team_does_not_outrank_team_with_results(self):
         with tempfile.TemporaryDirectory() as temp:
