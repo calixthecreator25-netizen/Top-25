@@ -16,8 +16,20 @@ class PreseasonTests(unittest.TestCase):
     def test_preseason_top25(self):
         r=compute(self.payload)
         self.assertEqual(len(r["preseason_top25"]),25)
-        self.assertEqual(r["preseason_top25"][0]["reason"],"prior_playoff_champion")
+        self.assertEqual(r["preseason_top25"][0]["reason"],"defending_national_champion")
+        self.assertEqual(r["preseason_top25"][1]["reason"],"roster_talent")
         self.assertEqual(r["preseason_top25"][12]["reason"],"roster_talent")
+    def test_non_playoff_team_can_rank_second(self):
+        self.payload["fbs_teams"][24]["talent"]={k:100 for k in WEIGHTS}
+        r=compute(self.payload)
+        self.assertEqual(r["preseason_top25"][1]["id"],"fbs24")
+        self.assertEqual(r["preseason_top25"][0]["id"],"fbs0")
+    def test_fcs_champion_reserved_first(self):
+        self.payload["fcs_teams"].append(team("fcs2"))
+        self.payload["fcs_champion_id"]="fcs2"
+        r=compute(self.payload)
+        self.assertEqual(r["fcs_preseason_top25"][0]["id"],"fcs2")
+        self.assertTrue(r["fcs_champion_verified"])
     def test_missing_talent_rejected(self):
         del self.payload["fcs_teams"][0]["talent"]["depth"]
         with self.assertRaises(ValueError):compute(self.payload)
