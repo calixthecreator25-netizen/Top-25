@@ -50,20 +50,24 @@ jobs:
       - name: Collect snapshots
         if: steps.clock.outputs.run == 'true'
         run: python scripts/fetch_cfbd.py --season ${{ github.event.inputs.season || '2026' }} --output data/raw
-      - name: Validate Python syntax
+      - name: Enforce first-month publication hold
+        id: publication
         if: steps.clock.outputs.run == 'true'
+        run: python scripts/publication_gate.py --season ${{ github.event.inputs.season || '2026' }} --source data/raw --github-output "$GITHUB_OUTPUT"
+      - name: Validate Python syntax
+        if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
         run: python -m compileall -q scripts tests
       - name: Generate experimental rankings
-        if: steps.clock.outputs.run == 'true'
+        if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
         run: python scripts/experimental_rankings.py --season ${{ github.event.inputs.season || '2026' }} --source data/raw --output data/experimental
       - name: Calculate conference standings
-        if: steps.clock.outputs.run == 'true'
+        if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
         run: python scripts/conference_standings.py --raw data/raw --rankings data/experimental --output data/conferences --season ${{ github.event.inputs.season || '2026' }}
       - name: Archive dated snapshots and calculate movement
-        if: steps.clock.outputs.run == 'true'
+        if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
         run: python scripts/archive_rankings.py --current data/experimental --history data/history
       - name: Persist ranking history in repository
-        if: steps.clock.outputs.run == 'true'
+        if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -73,10 +77,10 @@ jobs:
             git push
           fi
       - name: Run unit tests
-        if: steps.clock.outputs.run == 'true'
+        if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
         run: python -m unittest discover -s tests -v
       - name: Assemble static site
-        if: steps.clock.outputs.run == 'true'
+        if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
         run: |
           mkdir -p site/data/experimental site/data/history site/data/conferences
           cp -R data/history/. site/data/history/
@@ -84,13 +88,13 @@ jobs:
           cp data/experimental/*.json site/data/experimental/
           cp data/conferences/*.json site/data/conferences/
       - name: Audit rankings and generate review report
-        if: steps.clock.outputs.run == 'true'
+        if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
         run: python scripts/audit_rankings.py --source data/experimental --output site/audit.md
       - name: Audit matchup consistency and conference evidence
-        if: steps.clock.outputs.run == 'true'
+        if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
         run: python scripts/model_audit.py --source data/experimental --output site
       - name: Archive source records and built website before deployment
-        if: steps.clock.outputs.run == 'true'
+        if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: experimental-source-rankings-and-website
@@ -100,11 +104,11 @@ jobs:
             site/
           retention-days: 30
       - uses: actions/configure-pages@v5
-        if: steps.clock.outputs.run == 'true'
+        if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
         with:
           enablement: true
       - uses: actions/upload-pages-artifact@v3
-        if: steps.clock.outputs.run == 'true'
+        if: steps.clock.outputs.run == 'true' && steps.publication.outputs.publish == 'true'
         with:
           path: site
       - name: Deploy experimental website
