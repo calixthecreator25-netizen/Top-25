@@ -1,0 +1,29 @@
+name: Merit weight experiment
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  experiment:
+    runs-on: ubuntu-latest
+    env:
+      CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check data key
+        run: test -n "$CFBD_API_KEY"
+      - name: Fetch development seasons
+        run: |
+          python scripts/fetch_cfbd.py --season 2023 --output data/2023
+          python scripts/fetch_cfbd.py --season 2024 --output data/2024
+      - name: Evaluate fixed weight candidates on development seasons
+        run: python scripts/weight_experiment.py --data-root data --output results/weight-experiment.json
+      - name: Upload development results
+        uses: actions/upload-artifact@v4
+        with:
+          name: merit-weight-experiment
+          path: results/weight-experiment.json
+          retention-days: 90
