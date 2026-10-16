@@ -14,7 +14,7 @@ The experimental in-season score uses **50% schedule strength, 25% result qualit
 - **Limitations:** the opponent model and conference calibration have not been independently validated. Missing opponent ratings can create uneven coverage. This is a demonstration, not a claim of objective certainty or an official Top 25.
 
 ## Preseason
-Previous year's 12 playoff teams take FBS places 1–12, ordered by advancement: champion; runner-up; semifinal losers; quarterfinal losers; first-round losers. Prior-year merit breaks ties within each tier. The other 13 places are awarded by current roster talent.
+Only the defending FBS national champion is guaranteed preseason #1. Every other FBS program competes for places #2–25 using the same verified roster-talent score, regardless of whether it reached the previous playoffs. The champion's guaranteed position expires as soon as regular-season results are ranked; there are no protected in-season positions. For FCS, a verified `fcs_champion_id` similarly reserves preseason #1; without verified champion identification, the FCS table remains talent-ordered and is marked as lacking champion verification. Playoff-finish records still validate the FBS champion and postseason field but no longer lock #2–12.
 
 Roster talent weights: returning talent 35%, transfers 20%, recruiting 15%, QB/key positions 15%, coaching continuity 10%, depth 5%. All factors are normalized to 0–100. No rating may be published without verified input provenance. FCS has its own all-team preseason talent table.
 
