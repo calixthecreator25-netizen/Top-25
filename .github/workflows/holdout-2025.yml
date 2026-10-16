@@ -1,0 +1,27 @@
+name: Frozen 2025 holdout
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  holdout:
+    runs-on: ubuntu-latest
+    env:
+      CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check data key
+        run: test -n "$CFBD_API_KEY"
+      - name: Fetch 2025 holdout data
+        run: python scripts/fetch_cfbd.py --season 2025 --output data/2025
+      - name: Compare frozen baseline and selected formula
+        run: python scripts/holdout_2025.py
+      - name: Upload holdout report
+        uses: actions/upload-artifact@v4
+        with:
+          name: frozen-2025-holdout
+          path: results/holdout-2025.json
+          retention-days: 90
