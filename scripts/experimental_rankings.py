@@ -8,6 +8,29 @@ def run(src, dest, season, as_of, methodology="experimental-0.5"):
     def read(name):
         return json.loads((src / f"{name}_{season}.json").read_text())["records"]
     teams = {t["id"]:t for t in read("all_teams") if str(t.get("classification","")).lower() in ("fbs","fcs")}
+    # Prefer season-specific records for historical division and conference membership.
+    # Fail closed when the new source is present but incomplete or inconsistent.
+    season_records = src / f"season_records_{season}.json"
+    if season_records.exists():
+        memberships = {}
+        for item in read("season_records"):
+            ident = item.get("teamId")
+            classification = str(item.get("classification") or "").lower()
+            if ident is None or classification not in ("fbs", "fcs"):
+                continue
+            if ident in memberships and memberships[ident]["classification"] != classification:
+                raise ValueError(f"Conflicting season classification for {ident}")
+            memberships[ident] = item
+        if not memberships:
+            raise ValueError("Season records contain no FBS/FCS classifications")
+        teams = {}
+        for t in read("all_teams"):
+            membership = memberships.get(t["id"])
+            if membership:
+                teams[t["id"]] = {**t, "classification": membership["classification"],
+                                  "conference": membership.get("conference") or t.get("conference")}
+        if not teams:
+            raise ValueError("Season membership IDs did not match team records")
     games = {g["id"]:g for g in read("fbs_games")+read("fcs_games")}
     if not teams or not games:
         raise ValueError("Missing Division I teams or game schedule; refusing to publish empty rankings")
