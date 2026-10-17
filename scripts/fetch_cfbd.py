@@ -33,7 +33,8 @@ def fetch(season, output_dir, token):
     timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
     for name, endpoint, params in [
         ("fbs_teams", ENDPOINTS["fbs_teams"], {"year": season}),
-        ("all_teams", ENDPOINTS["all_teams"], {}),
+        ("all_teams", ENDPOINTS["all_teams"], {"year": season}),
+        ("season_records", "/records", {"year": season}),
         ("fbs_games", ENDPOINTS["fbs_games"], {"year": season, "division": "fbs"}),
         ("fcs_games", ENDPOINTS["fbs_games"], {"year": season, "division": "fcs"}),
     ]:
