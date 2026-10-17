@@ -1,0 +1,44 @@
+name: Compare experimental merit models
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    env:
+      CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check data key
+        run: test -n "$CFBD_API_KEY"
+      - name: Run rolling-origin backtests for development and holdout seasons
+        run: |
+          mkdir -p data/backtest
+          for year in 2023 2024 2025; do
+            python scripts/fetch_cfbd.py --season "$year" --output data/raw
+            python scripts/validate_sources.py --season "$year" --source data/raw --output "data/backtest/source-audit-$year.json"
+            python scripts/backtest.py --source data/raw --season "$year" --methodology experimental-0.5 --output "data/backtest/v05-$year.json"
+            python scripts/backtest.py --source data/raw --season "$year" --methodology experimental-0.6 --output "data/backtest/v06-$year.json"
+          done
+      - name: Summarize model comparison
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          with open('data/backtest/summary.md','w') as out:
+              out.write('# Rolling-origin comparison (not an official poll)\n\n| Season | Model | Evaluated games | Correct | Accuracy |\n|---|---|---:|---:|---:|\n')
+              for year in (2023,2024,2025):
+                  for version in ('v05','v06'):
+                      d=json.loads(Path(f'data/backtest/{version}-{year}.json').read_text())
+                      out.write(f"| {year} | {version} | {d['evaluated_games']} | {d['correct_predictions']} | {d['accuracy']:.1%} |\n")
+          print(Path('data/backtest/summary.md').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v05-v06-backtest-comparison
+          path: data/backtest/
+          retention-days: 30
