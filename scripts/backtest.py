@@ -6,7 +6,7 @@ try:
 except ModuleNotFoundError:
  from experimental_rankings import run
 
-def backtest(source,season,output,start_week=4,weights=(.4,.3,.2,.1)):
+def backtest(source,season,output,start_week=4,weights=None,methodology="experimental-0.5"):
  source=Path(source);output=Path(output)
  games={}
  for division in ("fbs","fcs"):
@@ -25,11 +25,11 @@ def backtest(source,season,output,start_week=4,weights=(.4,.3,.2,.1)):
   while cutoff<last:
    evaluation_end=cutoff+datetime.timedelta(days=7)
    if (cutoff-first).days>=7*start_week:
-    run(source,out,season,cutoff.isoformat())
+    run(source,out,season,cutoff.isoformat(),methodology)
     ratings={}
     for division in ("fbs","fcs"):
      for t in json.loads((out/(division+".json")).read_text())["teams"]:
-      ratings[t["id"]]={"score":sum(w*t["components"][k] for w,k in zip(weights,("schedule_strength","result_quality","win_percentage","conference_strength"))),"games":t["wins"]+t["losses"]+t.get("ties",0),"win_rate":(t["wins"]+.5*t.get("ties",0))/max(1,t["wins"]+t["losses"]+t.get("ties",0))}
+      ratings[t["id"]]={"score":t["merit_score"] if weights is None else sum(w*t["components"][k] for w,k in zip(weights,("schedule_strength","result_quality","win_percentage","conference_strength"))),"games":t["wins"]+t["losses"]+t.get("ties",0),"win_rate":(t["wins"]+.5*t.get("ties",0))/max(1,t["wins"]+t["losses"]+t.get("ties",0))}
     weekly=[]
     for g in played:
      d=datetime.date.fromisoformat(g["startDate"][:10])
@@ -50,12 +50,16 @@ def backtest(source,season,output,start_week=4,weights=(.4,.3,.2,.1)):
  correct=sum(x["correct"] for x in observations)
  baseline_home=sum(x["home_correct"] for x in observations)
  baseline_record=sum(x["record_correct"] for x in observations)
- report={"season":season,"weights":list(weights),"status":"RETROSPECTIVE_EXPERIMENTAL","methodology":"For each Sunday cutoff, recompute ratings from completed games through that date and predict winners of the next seven days. Exclude ties, score ties and teams with fewer than two previous games. No home-field adjustment.","limitations":["Historical team and conference memberships come from the available team endpoint, which may not be season-specific.","Game results are historical; no actual betting market or official poll benchmark is used.","Win prediction accuracy alone does not prove ranking fairness or postseason selection quality.","This test does not establish unbiased conference-strength estimates."],"evaluated_games":len(observations),"correct_predictions":correct,"accuracy":round(correct/len(observations),4),"benchmarks":{"always_home":{"correct":baseline_home,"accuracy":round(baseline_home/len(observations),4)},"prior_win_percentage":{"correct":baseline_record,"accuracy":round(baseline_record/len(observations),4),"tie_break":"home"}},"weeks":weeks,"examples":observations[:30]}
+ report={"season":season,"weights":list(weights) if weights is not None else None,"model_version":methodology,"status":"RETROSPECTIVE_EXPERIMENTAL","methodology":"For each Sunday cutoff, recompute ratings from completed games through that date and predict winners of the next seven days. Exclude ties, score ties and teams with fewer than two previous games. No home-field adjustment.","limitations":["Historical team and conference memberships come from the available team endpoint, which may not be season-specific.","Game results are historical; no actual betting market or official poll benchmark is used.","Win prediction accuracy alone does not prove ranking fairness or postseason selection quality.","This test does not establish unbiased conference-strength estimates."],"evaluated_games":len(observations),"correct_predictions":correct,"accuracy":round(correct/len(observations),4),"benchmarks":{"always_home":{"correct":baseline_home,"accuracy":round(baseline_home/len(observations),4)},"prior_win_percentage":{"correct":baseline_record,"accuracy":round(baseline_record/len(observations),4),"tie_break":"home"}},"weeks":weeks,"examples":observations[:30]}
  output.parent.mkdir(parents=True,exist_ok=True);output.write_text(json.dumps(report,indent=2))
  print("Backtest",season,correct,"/",len(observations),"=",report["accuracy"])
  print("Benchmarks: home",baseline_home,"/",len(observations),"prior W-L",baseline_record,"/",len(observations))
  return report
 if __name__=="__main__":
- p=argparse.ArgumentParser();p.add_argument("--source",required=True);p.add_argument("--season",type=int,required=True);p.add_argument("--output",required=True);p.add_argument("--start-week",type=int,default=4);p.add_argument("--weights",type=float,nargs=4,default=[.4,.3,.2,.1])
- a=p.parse_args();assert all(x>=0 for x in a.weights) and abs(sum(a.weights)-1)<1e-8,"Weights must be nonnegative and total 1"
- backtest(a.source,a.season,a.output,a.start_week,a.weights)
+ p=argparse.ArgumentParser();p.add_argument("--source",required=True);p.add_argument("--season",type=int,required=True);p.add_argument("--output",required=True);p.add_argument("--start-week",type=int,default=4);p.add_argument("--weights",type=float,nargs=4,default=None)
+ p.add_argument("--methodology",choices=["experimental-0.5","experimental-0.6"],default="experimental-0.5")
+ a=p.parse_args()
+ if a.weights is not None:
+  assert all(x>=0 for x in a.weights) and abs(sum(a.weights)-1)<1e-8,"Weights must be nonnegative and total 1"
+  if a.methodology!="experimental-0.5":raise ValueError("Custom four-component weights are only supported for v0.5")
+ backtest(a.source,a.season,a.output,a.start_week,a.weights,a.methodology)
