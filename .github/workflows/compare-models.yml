@@ -24,7 +24,7 @@ jobs:
             python scripts/backtest.py --source data/raw --season "$year" --methodology experimental-0.5 --output "data/backtest/v05-$year.json"
             python scripts/backtest.py --source data/raw --season "$year" --methodology experimental-0.6 --output "data/backtest/v06-$year.json"
           done
-      - name: Summarize model comparison
+      - name: Audit rank movement and conference effects\n        run: |\n          for year in 2023 2024 2025; do\n            python scripts/fetch_cfbd.py --season "$year" --output data/raw\n            python scripts/compare_rankings.py --source data/raw --season "$year" --as-of "$year-12-31" --output "data/backtest/rank-audit-$year"\n          done\n      - name: Summarize model comparison
         run: |
           python - <<'PY'
           import json
