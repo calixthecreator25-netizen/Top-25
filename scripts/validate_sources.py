@@ -47,6 +47,7 @@ def validate(source, output, season):
     unknown = []
     bad_scores = []
     incomplete_scores = []
+    incomplete_details = []
     completed = 0
     for g in by_game.values():
         if g.get("completed") is not True:
@@ -60,6 +61,7 @@ def validate(source, output, season):
         scores = (g.get("homePoints"),g.get("awayPoints"))
         if any(n is None for n in scores):
             incomplete_scores.append(g.get("id"))
+            incomplete_details.append({"id":g.get("id"),"date":g.get("startDate"),"home":g.get("homeTeam"),"away":g.get("awayTeam"),"homePoints":g.get("homePoints"),"awayPoints":g.get("awayPoints")})
         elif any(not isinstance(n,int) or isinstance(n,bool) or n<0 for n in scores):
             bad_scores.append(g.get("id"))
     if bad_scores:
@@ -75,6 +77,7 @@ def validate(source, output, season):
               "duplicate_records":len(fbs_games)+len(fcs_games)-len(by_game),
               "completed_games_missing_scores":len(incomplete_scores),
               "missing_score_game_ids_sample":incomplete_scores[:20],
+              "missing_score_game_details":incomplete_details,
               "status":"REVIEW_REQUIRED" if unknown or incomplete_scores else "PASS"}
     out=Path(output);out.parent.mkdir(parents=True,exist_ok=True)
     out.write_text(json.dumps(report,indent=2)+"\n")
