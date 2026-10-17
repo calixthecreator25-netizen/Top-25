@@ -10,9 +10,11 @@ except ModuleNotFoundError:
 def compare(source, output, season, as_of):
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
+    membership_available = (Path(source) / f"season_records_{season}.json").exists()
     report = {"season": season, "as_of": as_of, "status": "EXPERIMENTAL_REVIEW", "divisions": {},
-              "classification_warning": "Team classification comes from the current all_teams endpoint, not a season-specific membership file. Historical FBS/FCS assignments require verification before publication.",
-              "classification_review_required": season < 2026}
+              "classification_source": "season-specific CFBD /records" if membership_available else "team listing fallback",
+              "classification_review_required": not membership_available,
+              "classification_warning": "Season-specific classifications are used when present; historical membership still requires independent spot-checks."}
     for version, folder in (("experimental-0.5", "v05"), ("experimental-0.6", "v06")):
         run(source, output / folder, season, as_of, version)
     for div in ("fbs", "fcs"):
@@ -33,7 +35,7 @@ def compare(source, output, season, as_of):
         report["divisions"][div] = {
             "team_count": len(changes),
             "top10_members": [t["name"] for t in new[:10]],
-            "division_membership_review": [{"team": t["name"], "division": div.upper(), "reason": "Current classification used for historical season; verify historical division"} for t in new[:25]] if season < 2026 else [],
+            "division_membership_review": [{"team": t["name"], "division": div.upper(), "reason": "Current classification used for historical season; verify historical division"} for t in new[:25]] if not membership_available else [],
             "average_absolute_movement": round(sum(abs(t["movement"]) for t in changes) / len(changes), 3),
             "top25_new_entries": changed_top25,
             "top10_new_entries": [t["name"] for t in new[:10] if old_by_id[t["id"]]["rank"] > 10],
