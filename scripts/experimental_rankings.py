@@ -2,7 +2,7 @@
 import argparse, collections, datetime, json
 from pathlib import Path
 
-def run(src, dest, season, as_of):
+def run(src, dest, season, as_of, methodology="experimental-0.5"):
     src, dest = Path(src), Path(dest)
     dest.mkdir(parents=True, exist_ok=True)
     def read(name):
@@ -30,6 +30,8 @@ def run(src, dest, season, as_of):
             avg=sum((w+opp)/2 for w,opp in r)/n if n else .5
             nxt[i]=max(0,min(1,(n*avg+1)/(n+2)))
         rating=nxt
+    if methodology not in ("experimental-0.5", "experimental-0.6"):
+        raise ValueError("Unknown methodology")
     records=collections.defaultdict(list)
     conf_results=collections.defaultdict(list)
     for g in valid:
@@ -40,7 +42,8 @@ def run(src, dest, season, as_of):
             result="W" if own>against else "L" if own<against else "T"
             records[i].append({"opponent":teams[opp]["school"] if opp in teams else g[other+"Team"],
                 "date":g["startDate"][:10],"result":result,"score":f"{own}-{against}",
-                "opponent_rating":round(rating[opp]*100,2) if opp in teams else None})
+                "opponent_rating":round(rating[opp]*100,2) if opp in teams else None,
+                "margin":own-against})
             if opp in teams:
                 a,b=teams[i],teams[opp]
                 if (a.get("conference"),a["classification"])!=(b.get("conference"),b["classification"]):
@@ -71,7 +74,15 @@ def run(src, dest, season, as_of):
             conference_sample_size=conf_sample_sizes.get(conference_key,0)
             components={"schedule_strength":round(sos,4),"result_quality":round(quality,4),
                         "win_percentage":round(wpct,4),"conference_strength":round(conference,4)}
-            score=.5*sos+.25*quality+.15*wpct+.1*conference
+            if methodology == "experimental-0.6":
+                # Symmetric bounded margin: an upset gets opponent-quality credit
+                # through result_quality, while blowouts add limited performance evidence.
+                margins=[g["margin"] for g in relevant]
+                performance=50+50*sum(max(-28,min(28,m))/28 for m in margins)/len(margins) if margins else 50
+                components["performance_margin"]=round(performance,4)
+                score=.4*sos+.3*quality+.1*wpct+.1*conference+.1*performance
+            else:
+                score=.5*sos+.25*quality+.15*wpct+.1*conference
             rows.append({"id":str(i),"name":t["school"],"conference":t.get("conference") or "Independent",
                 "wins":wins,"losses":losses,"ties":ties,"lower_division_games":lower_division_games,"conference_sample_size":conference_sample_size,"merit_score":round(score,4),
                 "components":components,"games":gs})
@@ -81,9 +92,10 @@ def run(src, dest, season, as_of):
             t["team_above"]=rows[j-1]["name"] if j else None
             t["gap_to_team_above"]=round(rows[j-1]["merit_score"]-t["merit_score"],4) if j and rows[j-1]["wins"]+rows[j-1]["losses"]+rows[j-1]["ties"] and t["wins"]+t["losses"]+t["ties"] else None
         payload={"season":season,"division":division,"as_of":as_of,
-            "status":"EXPERIMENTAL_NOT_OFFICIAL","methodology_version":"experimental-0.5",
+            "status":"EXPERIMENTAL_NOT_OFFICIAL","methodology_version":methodology,
             "source":"CollegeFootballData API","games_involving_division_i":len(valid),
-            "notes":["Unvalidated opponent/conference model","No subjective prestige or scoring margin",
+            "notes":["Unvalidated opponent/conference model",
+                     "No subjective prestige; capped 28-point scoring margin in v0.6 only",
                      "Lower-division games count in W-L but have no opponent rating; D1-only quality and SOS",
                      "Teams without completed games placed below teams with results; not official rankings"],
             "teams":rows}
@@ -96,4 +108,5 @@ if __name__=="__main__":
     p.add_argument("--source",required=True);p.add_argument("--output",required=True)
     p.add_argument("--season",type=int,default=2026)
     p.add_argument("--as-of",default=datetime.datetime.now(datetime.timezone.utc).date().isoformat())
-    a=p.parse_args();run(a.source,a.output,a.season,a.as_of)
+    p.add_argument("--methodology",choices=["experimental-0.5","experimental-0.6"],default="experimental-0.5")
+    a=p.parse_args();run(a.source,a.output,a.season,a.as_of,a.methodology)
